@@ -43,20 +43,18 @@ type pkg struct {
 }
 
 func newPkg(data [][]byte, localFlag string) *pkg {
-	listMap := make(map[int][]string)
-	commentMap := make(map[string]string)
-	aliasMap := make(map[string]string)
 	p := &pkg{
-		list:    listMap,
-		comment: commentMap,
-		alias:   aliasMap,
+		list:    make(map[int][]string),
+		comment: make(map[string]string),
+		alias:   make(map[string]string),
 	}
 
-	formatData := make([]string, 0)
+	formatData := make([]string, 0, len(data))
 	// remove all empty lines
 	for _, v := range data {
-		if len(v) > 0 {
-			formatData = append(formatData, strings.TrimSpace(string(v)))
+		line := strings.TrimSpace(string(v))
+		if line != "" {
+			formatData = append(formatData, line)
 		}
 	}
 
@@ -64,34 +62,25 @@ func newPkg(data [][]byte, localFlag string) *pkg {
 	for i := n - 1; i >= 0; i-- {
 		line := formatData[i]
 
-		// check commentFlag:
-		// 1. one line commentFlag
-		// 2. commentFlag after import path
 		commentIndex := strings.Index(line, commentFlag)
 		if commentIndex == 0 {
-			// comment in the last line is useless, ignore it
+			// one line comment
 			if i+1 >= n {
+				// comment in the last line is useless, ignore it
 				continue
 			}
 			pkg, _, _ := getPkgInfo(formatData[i+1], strings.Index(formatData[i+1], commentFlag) >= 0)
 			p.comment[pkg] = line
 			continue
-		} else if commentIndex > 0 {
-			pkg, alias, comment := getPkgInfo(line, true)
-			if alias != "" {
-				p.alias[pkg] = alias
-			}
-
-			p.comment[pkg] = comment
-			pkgType := getPkgType(pkg, localFlag)
-			p.list[pkgType] = append(p.list[pkgType], pkg)
-			continue
 		}
 
-		pkg, alias, _ := getPkgInfo(line, false)
-
+		hasComment := commentIndex > 0
+		pkg, alias, comment := getPkgInfo(line, hasComment)
 		if alias != "" {
 			p.alias[pkg] = alias
+		}
+		if comment != "" {
+			p.comment[pkg] = comment
 		}
 
 		pkgType := getPkgType(pkg, localFlag)
