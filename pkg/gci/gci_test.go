@@ -75,7 +75,7 @@ func TestNewPkg(t *testing.T) {
 					standard: {`"os"`, `"fmt"`},
 					remote:   {`"github.com/owner/repo"`},
 				},
-				comments: map[string][]string{},
+				comments: map[string][]importComment{},
 				alias:    map[string]string{},
 			},
 		},
@@ -96,11 +96,11 @@ func TestNewPkg(t *testing.T) {
 					standard: {`"net/http/pprof"`, `"database/sql"`, `"log"`, `"fmt"`},
 					remote:   {`"github.com/owner/repo"`},
 				},
-				comments: map[string][]string{
-					`"fmt"`:            {"// same line comment"},
-					`"log"`:            {"//nolint"},
-					`"database/sql"`:   {"// import sql"},
-					`"net/http/pprof"`: {"//nolint:golint"},
+				comments: map[string][]importComment{
+					`"fmt"`:            {{comment: "// same line comment", sameLine: true}},
+					`"log"`:            {{comment: "//nolint", sameLine: true}},
+					`"database/sql"`:   {{comment: "// import sql", sameLine: true}},
+					`"net/http/pprof"`: {{comment: "//nolint:golint", sameLine: true}},
 				},
 				alias: map[string]string{
 					`"database/sql"`:   "_",
@@ -123,9 +123,9 @@ func TestNewPkg(t *testing.T) {
 					standard: {`"log"`, `"database/sql"`},
 					remote:   {`"github.com/owner/repo"`},
 				},
-				comments: map[string][]string{
-					`"log"`:          {"//nolint"},
-					`"database/sql"`: {"// import sql"},
+				comments: map[string][]importComment{
+					`"log"`:          {{comment: "//nolint", sameLine: false}},
+					`"database/sql"`: {{comment: "// import sql", sameLine: false}},
 				},
 				alias: map[string]string{
 					`"database/sql"`: "_",
@@ -149,13 +149,40 @@ func TestNewPkg(t *testing.T) {
 				list: map[int][]string{
 					standard: {`"log"`, `"database/sql"`},
 				},
-				comments: map[string][]string{
-					`"log"`:          {"//nolint", "// Import log"},
-					`"database/sql"`: {"// sql", "// import"},
+				comments: map[string][]importComment{
+					`"log"`: {
+						{comment: "//nolint", sameLine: false},
+						{comment: "// Import log", sameLine: false},
+					},
+					`"database/sql"`: {
+						{comment: "// sql", sameLine: false},
+						{comment: "// import", sameLine: false},
+					},
 				},
 				alias: map[string]string{
 					`"database/sql"`: "_",
 				},
+			},
+		},
+		{
+			desc: "mixed comments",
+			imports: `
+	// import
+	// sql
+	"database/sql" //nolint:golint
+`,
+			want: &pkg{
+				list: map[int][]string{
+					standard: {`"database/sql"`},
+				},
+				comments: map[string][]importComment{
+					`"database/sql"`: {
+						{comment: "//nolint:golint", sameLine: true},
+						{comment: "// sql", sameLine: false},
+						{comment: "// import", sameLine: false},
+					},
+				},
+				alias: map[string]string{},
 			},
 		},
 	}

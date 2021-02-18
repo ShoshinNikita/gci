@@ -38,14 +38,19 @@ type FlagSet struct {
 
 type pkg struct {
 	list     map[int][]string
-	comments map[string][]string
+	comments map[string][]importComment
 	alias    map[string]string
+}
+
+type importComment struct {
+	sameLine bool
+	comment  string
 }
 
 func newPkg(data [][]byte, localFlag string) *pkg {
 	p := &pkg{
 		list:     make(map[int][]string),
-		comments: make(map[string][]string),
+		comments: make(map[string][]importComment),
 		alias:    make(map[string]string),
 	}
 
@@ -70,7 +75,7 @@ func newPkg(data [][]byte, localFlag string) *pkg {
 				// comment in the last line is useless, ignore it
 				continue
 			}
-			p.comments[lastPkg] = append(p.comments[lastPkg], line)
+			p.comments[lastPkg] = append(p.comments[lastPkg], importComment{comment: line, sameLine: false})
 			continue
 		}
 
@@ -80,7 +85,7 @@ func newPkg(data [][]byte, localFlag string) *pkg {
 			p.alias[pkg] = alias
 		}
 		if comment != "" {
-			p.comments[pkg] = append(p.comments[pkg], comment)
+			p.comments[pkg] = append(p.comments[pkg], importComment{comment: comment, sameLine: true})
 		}
 
 		lastPkg = pkg
@@ -101,7 +106,7 @@ func (p *pkg) fmt() []byte {
 		for _, s := range p.list[pkgType] {
 			// TODO
 			if len(p.comments[s]) != 0 {
-				l := fmt.Sprintf("%s%s%s%s", linebreak, indent, p.comments[s][0], linebreak)
+				l := fmt.Sprintf("%s%s%s%s", linebreak, indent, p.comments[s][0].comment, linebreak)
 				ret = append(ret, l)
 			}
 
