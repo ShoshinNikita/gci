@@ -2,7 +2,10 @@ package gci
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetPkgType(t *testing.T) {
@@ -43,6 +46,46 @@ func TestGetPkgType(t *testing.T) {
 			if got, want := result, tc.ExpectedResult; got != want {
 				t.Errorf("bad result: %d, expected: %d", got, want)
 			}
+		})
+	}
+}
+
+func TestNewPkg(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		imports   string
+		localFlag string
+		//
+		want *pkg
+	}{
+		{
+			imports: `
+	"fmt"
+	"os"
+
+	"github.com/owner/repo"
+`,
+			want: &pkg{
+				list: map[int][]string{
+					standard: {`"os"`, `"fmt"`},
+					remote:   {`"github.com/owner/repo"`},
+				},
+				comment: map[string]string{},
+				alias:   map[string]string{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			data := make([][]byte, 0, len(tt.imports))
+			for _, line := range strings.Split(tt.imports, linebreak) {
+				data = append(data, []byte(line))
+			}
+
+			pkg := newPkg(data, tt.localFlag)
+			require.Equal(t, tt.want, pkg)
 		})
 	}
 }
