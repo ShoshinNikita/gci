@@ -126,23 +126,28 @@ func (p *pkg) fmt() []byte {
 }
 
 // getPkgInfo assume line is a import path, and return (path, alias, comment)
-func getPkgInfo(line string, comment bool) (string, string, string) {
-	if comment {
+func getPkgInfo(line string, hasComment bool) (path string, alias string, comment string) {
+	if hasComment {
 		s := strings.Split(line, commentFlag)
-		pkgArray := strings.Split(s[0], blank)
+
+		// Remove space after package name
+		pkgImport := strings.TrimSpace(s[0])
+		// Don't remove space before comment text for `//nolint` and etc.
+		comment := commentFlag + s[1]
+
+		pkgArray := strings.Split(pkgImport, blank)
 		if len(pkgArray) > 1 {
-			return pkgArray[1], pkgArray[0], fmt.Sprintf("%s%s%s", commentFlag, blank, strings.TrimSpace(s[1]))
-		} else {
-			return strings.TrimSpace(pkgArray[0]), "", fmt.Sprintf("%s%s%s", commentFlag, blank, strings.TrimSpace(s[1]))
+			// Import with alias
+			return pkgArray[1], pkgArray[0], comment
 		}
-	} else {
-		pkgArray := strings.Split(line, blank)
-		if len(pkgArray) > 1 {
-			return pkgArray[1], pkgArray[0], ""
-		} else {
-			return pkgArray[0], "", ""
-		}
+		return strings.TrimSpace(pkgArray[0]), "", comment
 	}
+
+	pkgArray := strings.Split(line, blank)
+	if len(pkgArray) > 1 {
+		return pkgArray[1], pkgArray[0], ""
+	}
+	return pkgArray[0], "", ""
 }
 
 func getPkgType(line, localFlag string) int {

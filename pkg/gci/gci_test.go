@@ -54,12 +54,16 @@ func TestNewPkg(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
+		desc string
+		//
 		imports   string
 		localFlag string
 		//
 		want *pkg
 	}{
 		{
+			desc: "basic",
+			//
 			imports: `
 	"fmt"
 	"os"
@@ -75,10 +79,63 @@ func TestNewPkg(t *testing.T) {
 				alias:   map[string]string{},
 			},
 		},
+		{
+			desc: "same line comments",
+			//
+			imports: `
+	"fmt" // same line comment
+	"log" //nolint
+
+	_ "database/sql"   // import sql
+	_ "net/http/pprof" //nolint:golint
+
+	"github.com/owner/repo"
+`,
+			want: &pkg{
+				list: map[int][]string{
+					standard: {`"net/http/pprof"`, `"database/sql"`, `"log"`, `"fmt"`},
+					remote:   {`"github.com/owner/repo"`},
+				},
+				comment: map[string]string{
+					`"fmt"`:            "// same line comment",
+					`"log"`:            "//nolint",
+					`"database/sql"`:   "// import sql",
+					`"net/http/pprof"`: "//nolint:golint",
+				},
+				alias: map[string]string{
+					`"database/sql"`:   "_",
+					`"net/http/pprof"`: "_",
+				},
+			},
+		},
+		{
+			desc: "one line comments",
+			imports: `
+	// import sql
+	_ "database/sql"
+	//nolint
+	"log"
+
+	"github.com/owner/repo"
+`,
+			want: &pkg{
+				list: map[int][]string{
+					standard: {`"log"`, `"database/sql"`},
+					remote:   {`"github.com/owner/repo"`},
+				},
+				comment: map[string]string{
+					`"log"`:          "//nolint",
+					`"database/sql"`: "// import sql",
+				},
+				alias: map[string]string{
+					`"database/sql"`: "_",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
-		t.Run("", func(t *testing.T) {
+		t.Run(tt.desc, func(t *testing.T) {
 			data := make([][]byte, 0, len(tt.imports))
 			for _, line := range strings.Split(tt.imports, linebreak) {
 				data = append(data, []byte(line))
