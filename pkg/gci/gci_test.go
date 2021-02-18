@@ -75,8 +75,8 @@ func TestNewPkg(t *testing.T) {
 					standard: {`"os"`, `"fmt"`},
 					remote:   {`"github.com/owner/repo"`},
 				},
-				comment: map[string]string{},
-				alias:   map[string]string{},
+				comments: map[string][]string{},
+				alias:    map[string]string{},
 			},
 		},
 		{
@@ -96,11 +96,11 @@ func TestNewPkg(t *testing.T) {
 					standard: {`"net/http/pprof"`, `"database/sql"`, `"log"`, `"fmt"`},
 					remote:   {`"github.com/owner/repo"`},
 				},
-				comment: map[string]string{
-					`"fmt"`:            "// same line comment",
-					`"log"`:            "//nolint",
-					`"database/sql"`:   "// import sql",
-					`"net/http/pprof"`: "//nolint:golint",
+				comments: map[string][]string{
+					`"fmt"`:            {"// same line comment"},
+					`"log"`:            {"//nolint"},
+					`"database/sql"`:   {"// import sql"},
+					`"net/http/pprof"`: {"//nolint:golint"},
 				},
 				alias: map[string]string{
 					`"database/sql"`:   "_",
@@ -123,9 +123,35 @@ func TestNewPkg(t *testing.T) {
 					standard: {`"log"`, `"database/sql"`},
 					remote:   {`"github.com/owner/repo"`},
 				},
-				comment: map[string]string{
-					`"log"`:          "//nolint",
-					`"database/sql"`: "// import sql",
+				comments: map[string][]string{
+					`"log"`:          {"//nolint"},
+					`"database/sql"`: {"// import sql"},
+				},
+				alias: map[string]string{
+					`"database/sql"`: "_",
+				},
+			},
+		},
+		{
+			desc: "multi line comments",
+			imports: `
+	// import
+	// sql
+	_ "database/sql"
+	// Import log
+	//nolint
+	"log"
+	// First dangling comment
+
+	// Second dangling comment
+`,
+			want: &pkg{
+				list: map[int][]string{
+					standard: {`"log"`, `"database/sql"`},
+				},
+				comments: map[string][]string{
+					`"log"`:          {"//nolint", "// Import log"},
+					`"database/sql"`: {"// sql", "// import"},
 				},
 				alias: map[string]string{
 					`"database/sql"`: "_",
