@@ -1,7 +1,10 @@
 package gci
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -331,6 +334,41 @@ func TestFmtPkg(t *testing.T) {
 			got := tt.pkg.fmt()
 			want := strings.TrimPrefix(tt.want, "\n")
 			require.Equal(t, want, string(got))
+		})
+	}
+}
+
+func TestProcessFile(t *testing.T) {
+	t.Parallel()
+
+	newBool := func(v bool) *bool { return &v }
+	flagSet := &FlagSet{
+		LocalFlag: "github.com/local/repo",
+		DoWrite:   newBool(false),
+		DoDiff:    newBool(false),
+	}
+
+	testNumbers := []int{1, 2}
+	for _, testNumber := range testNumbers {
+		testNumber := testNumber
+		t.Run("", func(t *testing.T) {
+			require := require.New(t)
+
+			inFilepath := fmt.Sprintf("testdata/%d.in.go", testNumber)
+			wantFilepath := fmt.Sprintf("testdata/%d.want.go", testNumber)
+
+			wantFile, err := os.Open(wantFilepath)
+			require.Nil(err)
+			defer wantFile.Close()
+
+			want, err := ioutil.ReadAll(wantFile)
+			require.Nil(err)
+
+			buf := bytes.NewBuffer(nil)
+			err = ProcessFile(inFilepath, buf, flagSet)
+			require.Nil(err)
+
+			require.Equal(string(want), buf.String())
 		})
 	}
 }
