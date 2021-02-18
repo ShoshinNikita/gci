@@ -199,3 +199,138 @@ func TestNewPkg(t *testing.T) {
 		})
 	}
 }
+
+func TestFmtPkg(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		pkg *pkg
+		//
+		want string
+	}{
+		{
+			pkg: &pkg{
+				list: map[int][]string{
+					standard: {`"os"`, `"fmt"`},
+					remote:   {`"github.com/owner/repo"`},
+				},
+			},
+			//
+			want: `
+	"fmt"
+	"os"
+
+	"github.com/owner/repo"
+`,
+		},
+		{
+			pkg: &pkg{
+				list: map[int][]string{
+					standard: {`"net/http/pprof"`, `"database/sql"`, `"log"`, `"fmt"`},
+					remote:   {`"github.com/owner/repo"`},
+				},
+				comments: map[string][]importComment{
+					`"fmt"`:            {{comment: "// same line comment", sameLine: true}},
+					`"log"`:            {{comment: "//nolint", sameLine: true}},
+					`"database/sql"`:   {{comment: "// import sql", sameLine: true}},
+					`"net/http/pprof"`: {{comment: "//nolint:golint", sameLine: true}},
+				},
+				alias: map[string]string{
+					`"database/sql"`:   "_",
+					`"net/http/pprof"`: "_",
+				},
+			},
+			//
+			want: `
+	_ "database/sql" // import sql
+	"fmt" // same line comment
+	"log" //nolint
+	_ "net/http/pprof" //nolint:golint
+
+	"github.com/owner/repo"
+`,
+		},
+		{
+			pkg: &pkg{
+				list: map[int][]string{
+					standard: {`"log"`, `"database/sql"`},
+				},
+				comments: map[string][]importComment{
+					`"log"`: {
+						{comment: "//nolint", sameLine: false},
+						{comment: "// Import log", sameLine: false},
+					},
+					`"database/sql"`: {
+						{comment: "// sql", sameLine: false},
+						{comment: "// import", sameLine: false},
+					},
+				},
+				alias: map[string]string{
+					`"database/sql"`: "_",
+				},
+			},
+			//
+			want: `
+	// import
+	// sql
+	_ "database/sql"
+	// Import log
+	//nolint
+	"log"
+`,
+		},
+		{
+			pkg: &pkg{
+				list: map[int][]string{
+					standard: {`"database/sql"`, `"fmt"`},
+					remote:   {`"github.com/remote/repo"`},
+					local:    {`"github.com/local/repo"`},
+				},
+				comments: map[string][]importComment{
+					// standart
+					`"database/sql"`: {
+						{comment: "//nolint:golint", sameLine: true},
+						{comment: "// sql", sameLine: false},
+						{comment: "// import", sameLine: false},
+					},
+					`"fmt"`: {
+						{comment: "// fmt package", sameLine: false},
+					},
+					// remote
+					`"github.com/remote/repo"`: {
+						{comment: "//nolint", sameLine: true},
+						{comment: "// test", sameLine: false},
+					},
+					// local
+					`"github.com/local/repo"`: {
+						{comment: "//nolint", sameLine: true},
+						{comment: "// test 2", sameLine: false},
+					},
+				},
+				alias: map[string]string{},
+			},
+			//
+			want: `
+	// import
+	// sql
+	"database/sql" //nolint:golint
+	// fmt package
+	"fmt"
+
+	// test
+	"github.com/remote/repo" //nolint
+
+	// test 2
+	"github.com/local/repo" //nolint
+`,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			got := tt.pkg.fmt()
+			want := strings.TrimPrefix(tt.want, "\n")
+			require.Equal(t, want, string(got))
+		})
+	}
+}

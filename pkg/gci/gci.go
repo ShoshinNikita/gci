@@ -104,19 +104,29 @@ func (p *pkg) fmt() []byte {
 	for pkgType := range []int{standard, remote, local} {
 		sort.Strings(p.list[pkgType])
 		for _, s := range p.list[pkgType] {
-			// TODO
-			if len(p.comments[s]) != 0 {
-				l := fmt.Sprintf("%s%s%s%s", linebreak, indent, p.comments[s][0].comment, linebreak)
+			var sameLineComment string
+			for i := len(p.comments[s]) - 1; i >= 0; i-- {
+				c := p.comments[s][i]
+				if c.sameLine {
+					sameLineComment = c.comment
+					continue
+				}
+
+				l := indent + c.comment + linebreak
 				ret = append(ret, l)
 			}
 
+			line := indent
 			if p.alias[s] != "" {
-				s = fmt.Sprintf("%s%s%s%s%s", indent, p.alias[s], blank, s, linebreak)
-			} else {
-				s = fmt.Sprintf("%s%s%s", indent, s, linebreak)
+				line += p.alias[s] + blank
 			}
+			line += s
+			if sameLineComment != "" {
+				line += blank + sameLineComment
+			}
+			line += linebreak
 
-			ret = append(ret, s)
+			ret = append(ret, line)
 		}
 
 		if len(p.list[pkgType]) > 0 {
@@ -127,10 +137,7 @@ func (p *pkg) fmt() []byte {
 		ret = ret[:len(ret)-1]
 	}
 
-	// remove duplicate empty lines
-	s1 := fmt.Sprintf("%s%s%s%s", linebreak, linebreak, linebreak, indent)
-	s2 := fmt.Sprintf("%s%s%s", linebreak, linebreak, indent)
-	return []byte(strings.ReplaceAll(strings.Join(ret, ""), s1, s2))
+	return []byte(strings.Join(ret, ""))
 }
 
 // getPkgInfo assume line is a import path, and return (path, alias, comment)
